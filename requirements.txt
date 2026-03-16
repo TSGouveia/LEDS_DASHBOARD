@@ -1,0 +1,7 @@
+requests
+numpy
+opencv-python
+pyserial
+yfinance
+mss
+python-dateutil

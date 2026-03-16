@@ -23,9 +23,9 @@ def main():
 
     apps = [
         ClockApp("Relógio", fonts),
-        #WeatherApp("Clima", fonts),
-        #MTSApp("Metros", fonts),
-        #FootballApp("Futebol", fonts),
+        WeatherApp("Clima", fonts),
+        MTSApp("Metros", fonts),
+        FootballApp("Futebol", fonts),
         MarketApp("Mercados", fonts)
     ]
     

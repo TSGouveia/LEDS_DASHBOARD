@@ -87,8 +87,8 @@ public:
                 if (dPrev == "") continue;
                 if (dateToday == "") dateToday = dPrev.substring(0, 10);
                 
-                // Pega a primeira entrada de hoje (mais próxima do início do dia/agora)
-                if (!foundToday && dPrev.startsWith(dateToday)) {
+                // Pega 12:00 de hoje
+                if (!foundToday && dPrev.startsWith(dateToday) && dPrev.endsWith("T12:00:00")) {
                     float t = findValue(client, "\"tMed\"");
                     if (t == -99.0) t = findValue(client, "\"tMax\"");
                     float id = findValue(client, "\"idTipoTempo\"");
@@ -96,7 +96,7 @@ public:
                     today.icon = getIconName((int)id);
                     foundToday = true;
                 } 
-                // Pega a entrada das 12:00 de amanhã
+                // Pega 12:00 de amanhã
                 else if (!foundTomorrow && dPrev.substring(0, 10) != dateToday && dPrev.endsWith("T12:00:00")) {
                     float t = findValue(client, "\"tMed\"");
                     if (t == -99.0) t = findValue(client, "\"tMax\"");
@@ -115,8 +115,10 @@ public:
     void draw(Renderer& renderer, cLEDMatrixBase& leds, FontLoader& fontLoader) override {
         if (!hasData) return;
         unsigned long elapsed = millis() - displayStartTime;
-        bool showT = (elapsed > 30000); // 30s hoje, 30s amanha
+        bool showT = (elapsed > 30000); 
         WeatherData& d = showT ? tomorrow : today;
+        const char* lbl = showT ? "AMNH" : "HOJE";
+
         renderer.clear(leds);
         fontLoader.drawWeatherIcon(renderer, leds, d.icon.c_str(), 0, 3);
         char tB[8], pB[8];
@@ -129,7 +131,6 @@ public:
         renderer.setPixel(leds, sx, sy, 0, 150, 255); renderer.setPixel(leds, sx+2, sy+1, 0, 150, 255);
         renderer.setPixel(leds, sx+1, sy+2, 0, 150, 255); renderer.setPixel(leds, sx, sy+3, 0, 150, 255);
         renderer.setPixel(leds, sx+2, sy+4, 0, 150, 255);
-        const char* lbl = showT ? "AMNH" : "HOJE";
         fontLoader.drawText3x5(renderer, leds, lbl, 31 - getTextWidth(lbl), 13, 100, 100, 100);
     }
     int getDuration() override { return 60; }

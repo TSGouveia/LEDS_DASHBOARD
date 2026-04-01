@@ -7,10 +7,11 @@ from apps.weather_app import WeatherApp
 from apps.mts_app import MTSApp
 from apps.football_app import FootballApp
 from apps.market_app import MarketApp
+from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO ---
-SERIAL_PORT = "COM19"
 BAUD_RATE = 1000000
+UPDATE_CHECK_INTERVAL = 600 # 10 minutos em segundos
 
 def fetch_data_async(app):
     app.is_updating = True
@@ -19,7 +20,8 @@ def fetch_data_async(app):
 
 def main():
     fonts = FontLoader()
-    renderer = LEDRenderer(SERIAL_PORT, width=32, height=18, baud=BAUD_RATE)
+    # Passamos a função find_serial_port em vez de uma porta fixa para o renderer ser resiliente
+    renderer = LEDRenderer(find_serial_port, width=32, height=18, baud=BAUD_RATE)
 
     apps = [
         ClockApp("Relógio", fonts),
@@ -33,8 +35,15 @@ def main():
     # Carregamento inicial
     apps[current_idx].update_data()
 
+    last_update_check = time.time()
+
     try:
         while True:
+            # Verifica atualizações do Git periodicamente
+            if time.time() - last_update_check > UPDATE_CHECK_INTERVAL:
+                update_from_git()
+                last_update_check = time.time()
+
             current_app = apps[current_idx]
             next_idx = (current_idx + 1) % len(apps)
             next_app = apps[next_idx]

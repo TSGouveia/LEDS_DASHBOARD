@@ -41,7 +41,9 @@ def main():
         while True:
             # Verifica atualizações do Git periodicamente
             if time.time() - last_update_check > UPDATE_CHECK_INTERVAL:
-                update_from_git()
+                if update_from_git():
+                    print("[MAIN] Reiniciando serviço para aplicar atualizações...")
+                    return # Sai do loop e termina o main()
                 last_update_check = time.time()
 
             current_app = apps[current_idx]

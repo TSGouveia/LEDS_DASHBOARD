@@ -8,6 +8,7 @@ from apps.weather_app import WeatherApp
 from apps.mts_app import MTSApp
 from apps.football_app import FootballApp
 from apps.market_app import MarketApp
+from apps.test_app import TestApp
 from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO DA PLAYLIST ---
@@ -17,8 +18,9 @@ PLAYLIST = [
     ("Relógio", 300),
     ("Clima", 60),
     ("Metros", 60),
-    #("Futebol", 60),
+    #("Futebol", 10),
     ("Mercados", 60),
+    #("Teste", 40),
 ]
 
 BAUD_RATE = 1000000
@@ -49,7 +51,8 @@ def main():
         "Clima": WeatherApp("Clima", fonts),
         "Metros": MTSApp("Metros", fonts),
         "Futebol": FootballApp("Futebol", fonts),
-        "Mercados": MarketApp("Mercados", fonts)
+        "Mercados": MarketApp("Mercados", fonts),
+        "Teste": TestApp("Teste", fonts, duration=40)
     }
 
     current_playlist_idx = 0
@@ -77,12 +80,23 @@ def main():
             current_app.reset_app()
 
             # Loop de exibição da app atual
+            frame_delay = 1.0 / 10  # 10 FPS (podes ajustar para 5 se necessário)
+            
             while True:
+                frame_start_time = time.monotonic()
+                
+                # 1. Desenha e envia o frame
                 frame = current_app.draw()
                 renderer.display(frame)
-                time.sleep(0.1)
-
+                
+                # 2. Verifica tempo decorrido
                 elapsed = time.time() - start_time
+
+                # 3. Timing preciso para o FPS
+                processing_time = time.monotonic() - frame_start_time
+                sleep_time = frame_delay - processing_time
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
 
                 # Inicia o fetch da próxima app 5 segundos antes de trocar ou assim que possível
                 if elapsed >= (duration - 5) and not fetch_started:

@@ -1,5 +1,6 @@
 import serial
 import numpy as np
+import cv2
 
 class LEDRenderer:
     def __init__(self, port_finder_func, width=32, height=18, baud=1000000):
@@ -23,7 +24,8 @@ class LEDRenderer:
             return False
 
         try:
-            self.ser = serial.Serial(self.port, self.baud, timeout=1.0)
+            # timeout=1 para leitura, write_timeout=0.2 para escrita (baseado no script que funciona)
+            self.ser = serial.Serial(self.port, self.baud, timeout=1.0, write_timeout=0.2)
             self.ser.reset_output_buffer()
             print(f"[RENDERER] Conectado à porta {self.port}")
             return True
@@ -31,17 +33,18 @@ class LEDRenderer:
             print(f"[RENDERER] Erro ao conectar na porta {self.port}: {e}")
             return False
 
-    def _to_zigzag(self, frame_rgb):
-        """Converte a matriz RGB para o formato de fiação da mesa."""
-        # Garante que a matriz tem o tamanho esperado
-        if frame_rgb.shape[:2] != (self.height, self.width):
-            import cv2
-            frame_rgb = cv2.resize(frame_rgb, (self.width, self.height), interpolation=cv2.INTER_NEAREST)
+    def _prepare_linear(self, frame_rgb):
+        """Prepara os dados em formato RGB linear com rotação de 180 graus."""
+        # 1. Rotação de 180 graus (conforme o hardware exige agora)
+        frame_rgb = cv2.rotate(frame_rgb, cv2.ROTATE_180)
 
-        frame = np.ascontiguousarray(frame_rgb, dtype=np.uint8)
-        zigzag_frame = frame.copy()
-        zigzag_frame[1::2, :] = zigzag_frame[1::2, ::-1]
-        return zigzag_frame.tobytes()
+        # 2. Garante que a matriz tem o tamanho esperado
+        if frame_rgb.shape[:2] != (self.height, self.width):
+            frame_rgb = cv2.resize(frame_rgb, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
+
+        # 3. Retorna os bytes em formato linear: R, G, B, R, G, B...
+        # .flatten() garante a sequência correta e .tobytes() converte para bytes
+        return frame_rgb.flatten().tobytes()
 
     def display(self, frame_rgb):
         """Envia o frame para os LEDs com tentativa de reconexão."""
@@ -50,12 +53,13 @@ class LEDRenderer:
                 return
 
         try:
-            payload = self._to_zigzag(frame_rgb)
+            payload = self._prepare_linear(frame_rgb)
             expected_len = self.width * self.height * 3
             if len(payload) == expected_len:
+                # Envia o pacote: [0xA5, 0x5A, R, G, B, ...]
                 self.ser.write(self.start_bytes + payload)
             else:
-                print(f"Erro: Payload com {len(payload)} bytes, esperado {expected_len}")
+                print(f"[RENDERER] Erro: Payload com {len(payload)} bytes, esperado {expected_len}")
         except Exception as e:
             print(f"[RENDERER] Erro ao enviar para serial: {e}. Tentando reconectar...")
             self.ser = None # Força reconexão na próxima chamada

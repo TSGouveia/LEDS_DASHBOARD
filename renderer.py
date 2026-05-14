@@ -36,7 +36,7 @@ class LEDRenderer:
     def _prepare_linear(self, frame_rgb):
         """Prepara os dados em formato RGB linear com rotação de 180 graus."""
         # 1. Rotação de 180 graus (conforme o hardware exige agora)
-        frame_rgb = cv2.rotate(frame_rgb, cv2.ROTATE_180)
+        frame_rgb = np.rot90(frame_rgb, k=2)
 
         # 2. Garante que a matriz tem o tamanho esperado
         if frame_rgb.shape[:2] != (self.height, self.width):

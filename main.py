@@ -15,11 +15,11 @@ from utils import find_serial_port, update_from_git
 # Podes escolher quais apps aparecem e durante quanto tempo (em segundos)
 # Exemplo: Relógio (300s = 5m), Clima (20s), Futebol (45s)
 PLAYLIST = [
-    ("Relógio", 300),
-    ("Clima", 60),
-    ("Metros", 60),
+    ("Relógio", 120),
+    ("Clima", 30),
+    ("Metros", 30),
     #("Futebol", 10),
-    ("Mercados", 60),
+    ("Mercados", 30),
     #("Teste", 40),
 ]
 

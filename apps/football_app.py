@@ -13,7 +13,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class FootballApp(BaseApp):
     def __init__(self, name, font_loader):
         super().__init__(name, font_loader)
-        self.games = []
+        self.games = []  # Active games for display
+        self.games_schedule = []  # Full list of future games
+        self.last_fetch_date = None  # Track daily fetch ("YYYY-MM-DD")
+        self.last_live_fetch = 0  # Track live polling to prevent spam
         self.fb_token = "89a4b73251c44a309c0d5d06c648d461"
         self.headers = {"X-Auth-Token": self.fb_token}
         # Adicionado 57 (Arsenal) e 61 (Chelsea) conforme o teu interesse

@@ -102,35 +102,52 @@ class FootballApp(BaseApp):
             print(f"[COLOR API] Erro: {e}")
             return (136, 136, 136)
 
+    def _fetch_daily_schedule(self, today_str):
+        print(f"[FOOTBALL] Fetching schedule for {today_str}...")
+        temp_schedule = []
+        for team_id in self.my_team_ids:
+            url = f"https://api.football-data.org/v4/teams/{team_id}/matches"
+            # Removed 'status' params to fetch all future matches if needed, but keeping it to SCHEDULED,LIVE,TIMED,IN_PLAY covers upcoming
+            params = {"status": "SCHEDULED,LIVE,TIMED,IN_PLAY"}
+            try:
+                response = requests.get(url, headers=self.headers, params=params, timeout=10, verify=False)
+                if response.status_code == 200:
+                    data = response.json()
+                    for m in data.get('matches', []):
+                        game_time = m['utcDate'].split('T')[1][:5]
+                        score = m.get('score', {}).get('fullTime', {})
+                        score_h = score.get('home') if score.get('home') is not None else 0
+                        score_a = score.get('away') if score.get('away') is not None else 0
+                        
+                        game_info = {
+                            "date": m['utcDate'].split('T')[0],
+                            "home": m['homeTeam']['tla'], "home_id": m['homeTeam']['id'], 
+                            "away": m['awayTeam']['tla'], "away_id": m['awayTeam']['id'], 
+                            "time": game_time, "status": m['status'],
+                            "score_h": str(score_h), "score_a": str(score_a),
+                            "match_id": m['id'] # Important for targeted live updates later
+                        }
+                        if not any(g['time'] == game_time and g['home'] == game_info['home'] for g in temp_schedule):
+                            temp_schedule.append(game_info)
+            except Exception as e:
+                print(f"[FOOTBALL] Erro API equipa {team_id}: {e}")
+            time.sleep(0.2)
+        
+        self.games_schedule = temp_schedule
+        self.last_fetch_date = today_str
+        print(f"[FOOTBALL] Schedule Fetch OK. Total Jogos Agendados: {len(self.games_schedule)}")
+
     def update_data(self):
         try:
             now = datetime.now()
             today_str = now.strftime("%Y-%m-%d")
-            temp_games = []
-            
-            for team_id in self.my_team_ids:
-                url = f"https://api.football-data.org/v4/teams/{team_id}/matches"
-                params = {"status": "SCHEDULED,LIVE,TIMED,IN_PLAY"}
-                response = requests.get(url, headers=self.headers, params=params, timeout=10, verify=False)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    for m in data.get('matches', []):
-                        if m['utcDate'].split('T')[0] == today_str:
-                            game_time = m['utcDate'].split('T')[1][:5]
-                            score = m.get('score', {}).get('fullTime', {})
-                            score_h = score.get('home') if score.get('home') is not None else 0
-                            score_a = score.get('away') if score.get('away') is not None else 0
-                            
-                            game_info = {
-                                "home": m['homeTeam']['tla'], "home_id": m['homeTeam']['id'], 
-                                "away": m['awayTeam']['tla'], "away_id": m['awayTeam']['id'], 
-                                "time": game_time, "status": m['status'],
-                                "score_h": str(score_h), "score_a": str(score_a)
-                            }
-                            if not any(g['time'] == game_time and g['home'] == game_info['home'] for g in temp_games):
-                                temp_games.append(game_info)
-                time.sleep(0.2)
+
+            # 1. Fetch daily schedule once per day
+            if self.last_fetch_date != today_str:
+                self._fetch_daily_schedule(today_str)
+
+            # 2. Filter today's games from schedule
+            temp_games = [g for g in self.games_schedule if g['date'] == today_str]
 
             temp_games.sort(key=lambda g: 0 if g['status'] in ["LIVE", "IN_PLAY"] else 1)
             self.games = temp_games

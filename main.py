@@ -13,11 +13,11 @@ from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO DA PLAYLIST ---
 PLAYLIST = [
-    ("Relógio", 15),
-    ("Clima", 15),
-    ("Metros", 15),
+    ("Relógio", 120),
+    ("Clima", 30),
+    ("Metros", 30),
     ("Futebol", 30),
-    ("Mercados", 15),
+    ("Mercados", 30),
 ]
 
 BAUD_RATE = 1000000

@@ -14,7 +14,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class FootballApp(BaseApp):
     # --- CONFIGURAÇÃO FÁCIL PARA DEBUG ---
     LOOKAHEAD_HOURS = 24  # Altera aqui para ex: 72 ou 168 (1 semana) para testar
-    MY_TEAM_IDS = [503, 1903, 498, 765,1777] # Porto, Benfica, Sporting, Portugal
+    MY_TEAM_IDS = [503, 1903, 498, 765] # Porto, Benfica, Sporting, Portugal
     # -------------------------------------
 
     def __init__(self, name, font_loader):
@@ -168,26 +168,11 @@ class FootballApp(BaseApp):
             temp_games.sort(key=lambda g: (0 if g['status'] in ["LIVE", "IN_PLAY"] else 1, g['dt']))
             self.games = temp_games
 
-            # --- DEBUG: INJETAR JOGO FAKE LIVE ---
-            fake_game = {
-                "home": "FKE", "home_id": "9999",
-                "away": "TST", "away_id": "8888",
-                "time": "00:00",
-                "status": "LIVE",
-                "score_h": "3", "score_a": "1",
-                "match_id": 0,
-                "dt": now
-            }
-            self.games.insert(0, fake_game)
-            self.rgb_cache["9999"] = (200, 0, 0)
-            self.rgb_cache["8888"] = (0, 0, 200)
-            # -------------------------------------
-            
             self.last_update_time = now_ts
             # Only set to 0 if we want to skip. Else, leave it so main.py can set it.
             if not self.games:
                 self.duration = 0
-            print(f"[FOOTBALL] Update OK. {len(self.games)} games found (1 FAKE LIVE).")
+            print(f"[FOOTBALL] Update OK. {len(self.games)} games found in next {self.LOOKAHEAD_HOURS}h (Timezone: Local).")
         except Exception as e:
             print(f"[FOOTBALL] General update error: {e}")
             self.duration = 0

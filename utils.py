@@ -15,7 +15,7 @@ def find_serial_port():
     ]
     
     for port in ports:
-        return "COM18"
+        # return "COM18"
         # No Linux, port.device será algo como /dev/ttyACM0 ou /dev/ttyUSB0
         print(f"Detectada porta: {port.device} - {port.description} [{port.hwid}]")
         for hwid in common_hwids:

@@ -14,8 +14,11 @@ class BaseApp:
         """Lógica de API"""
         pass
 
-    def reset_app(self):
-        """Chamado quando a app começa a ser exibida"""
+    def reset_app(self, duration=None):
+        """Chamado quando a app começa a ser exibida. 
+        Pode receber a duração vinda da playlist."""
+        if duration is not None:
+            self.duration = duration
         pass
 
     def draw(self):

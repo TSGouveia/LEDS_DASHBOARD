@@ -8,7 +8,8 @@ class TestApp(BaseApp):
         self.duration = duration
         self.start_time = 0
 
-    def reset_app(self):
+    def reset_app(self, duration=None):
+        super().reset_app(duration)
         self.start_time = time.time()
 
     def draw(self):

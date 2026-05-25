@@ -62,15 +62,14 @@ class WeatherApp(BaseApp):
             print(f"Final: HOJE {self.data_today['temp']}C ({precip_today}%) | AMNH {self.data_tomorrow['temp']}C ({precip_tomorrow}%)")
             print(f"--- WEATHER SYNC END ---\n")
             
-            self.start_app_time = time.time()
             self.duration = 10
         except Exception as e:
             print(f"Erro Weather API: {e}")
             self.duration = 0
 
-        except Exception as e:
-            print(f"Erro Weather API: {e}")
-            self.duration = 0
+    def reset_app(self, duration=None):
+        super().reset_app(duration)
+        self.start_app_time = time.time()
 
     def get_weather_icon(self, wid):
         if wid == 1: return "SUN"
@@ -93,7 +92,8 @@ class WeatherApp(BaseApp):
     def draw(self):
         canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         elapsed = time.time() - self.start_app_time
-        is_tomorrow = elapsed > 5
+        # Switch to tomorrow's forecast exactly at half the duration
+        is_tomorrow = elapsed > (self.duration / 2)
         data = self.data_tomorrow if is_tomorrow else self.data_today
         label = "AMNH" if is_tomorrow else "HOJE"
         

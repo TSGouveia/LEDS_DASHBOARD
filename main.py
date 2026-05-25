@@ -12,19 +12,16 @@ from apps.test_app import TestApp
 from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO DA PLAYLIST ---
-# Podes escolher quais apps aparecem e durante quanto tempo (em segundos)
-# Exemplo: Relógio (300s = 5m), Clima (20s), Futebol (45s)
 PLAYLIST = [
-    ("Relógio", 120),
-    ("Clima", 30),
-    ("Metros", 30),
-    #("Futebol", 10),
-    ("Mercados", 30),
-    #("Teste", 40),
+    ("Relógio", 15),
+    ("Clima", 15),
+    ("Metros", 15),
+    ("Futebol", 30),
+    ("Mercados", 15),
 ]
 
 BAUD_RATE = 1000000
-UPDATE_CHECK_INTERVAL = 30  # Verificação do Git a cada 30 segundos
+UPDATE_CHECK_INTERVAL = 30
 
 def fetch_data_async(app):
     app.is_updating = True
@@ -32,9 +29,8 @@ def fetch_data_async(app):
     app.is_updating = False
 
 def show_update_screen(renderer, fonts):
-    """Desenha um ecrã de 'UPDATING' nos LEDs antes de reiniciar."""
     canvas = np.zeros((18, 32, 3), dtype=np.uint8)
-    color = (0, 255, 255) # Ciano
+    color = (0, 255, 255)
     text = "UPDATING"
     for i, char in enumerate(text):
         fonts.draw_char(canvas, char, i * 4, 7, "3x5", color)
@@ -45,7 +41,6 @@ def main():
     fonts = FontLoader()
     renderer = LEDRenderer(find_serial_port, width=32, height=18, baud=BAUD_RATE)
 
-    # Inicializamos todas as apps disponíveis
     available_apps = {
         "Relógio": ClockApp("Relógio", fonts),
         "Clima": WeatherApp("Clima", fonts),
@@ -58,65 +53,73 @@ def main():
     current_playlist_idx = 0
     last_update_check = time.time()
 
-    # Carregamento inicial da primeira app da playlist
-    first_app_name, _ = PLAYLIST[current_playlist_idx]
-    current_app = available_apps[first_app_name]
-    current_app.update_data()
+    # Initial load for ALL apps to prevent black screens on skips
+    print("[MAIN] Warm-up: Updating all apps...")
+    for app in available_apps.values():
+        threading.Thread(target=fetch_data_async, args=(app,), daemon=True).start()
 
     try:
         while True:
-            # 1. Configura a app atual da playlist
-            app_name, duration = PLAYLIST[current_playlist_idx]
+            app_name, playlist_duration = PLAYLIST[current_playlist_idx]
             current_app = available_apps[app_name]
             
-            # 2. Configura a próxima app para o fetch em background
+            # Playlist duration is the master, unless app wants to skip (0)
+            if current_app.duration != 0:
+                current_app.duration = playlist_duration
+            
+            actual_duration = current_app.duration
+            
+            if actual_duration == 0:
+                print(f"[MAIN] Skipping {app_name} (duration is 0)")
+                current_playlist_idx = (current_playlist_idx + 1) % len(PLAYLIST)
+                
+                # Start fetch for the app after the one we are skipping to
+                next_next_idx = (current_playlist_idx + 1) % len(PLAYLIST)
+                next_next_app_name, _ = PLAYLIST[next_next_idx]
+                threading.Thread(target=fetch_data_async, args=(available_apps[next_next_app_name],), daemon=True).start()
+                continue
+
+            # App is valid, prepare for display
             next_playlist_idx = (current_playlist_idx + 1) % len(PLAYLIST)
             next_app_name, _ = PLAYLIST[next_playlist_idx]
             next_app = available_apps[next_app_name]
 
-            print(f"[MAIN] Exibindo {app_name} por {duration}s")
+            print(f"[MAIN] Exibindo {app_name} por {actual_duration}s")
             start_time = time.time()
             fetch_started = False
-            current_app.reset_app()
+            current_app.reset_app(duration=playlist_duration)
 
-            # Loop de exibição da app atual
-            frame_delay = 1.0 / 10  # 10 FPS (podes ajustar para 5 se necessário)
+            frame_delay = 1.0 / 10
             
             while True:
                 frame_start_time = time.monotonic()
                 
-                # 1. Desenha e envia o frame
                 frame = current_app.draw()
                 renderer.display(frame)
                 
-                # 2. Verifica tempo decorrido
                 elapsed = time.time() - start_time
 
-                # 3. Timing preciso para o FPS
                 processing_time = time.monotonic() - frame_start_time
                 sleep_time = frame_delay - processing_time
                 if sleep_time > 0:
                     time.sleep(sleep_time)
 
-                # Inicia o fetch da próxima app 5 segundos antes de trocar ou assim que possível
-                if elapsed >= (duration - 5) and not fetch_started:
+                # Start background fetch for NEXT app 5s before switching
+                if elapsed >= (actual_duration - 5) and not fetch_started:
                     threading.Thread(target=fetch_data_async, args=(next_app,), daemon=True).start()
                     fetch_started = True
 
-                # Verificação periódica do Git
                 if time.time() - last_update_check > UPDATE_CHECK_INTERVAL:
                     if update_from_git():
                         show_update_screen(renderer, fonts)
                         return
                     last_update_check = time.time()
 
-                # Troca de app quando o tempo acaba E o fetch da próxima terminou
-                if elapsed >= duration:
+                if elapsed >= actual_duration:
                     if not next_app.is_updating:
                         current_playlist_idx = next_playlist_idx
                         break
                     else:
-                        # Se a próxima ainda estiver a atualizar, espera mais um pouco
                         time.sleep(0.5)
 
     except KeyboardInterrupt:

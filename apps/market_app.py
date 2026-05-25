@@ -130,5 +130,6 @@ class MarketApp(BaseApp):
                 
         return canvas
 
-    def reset_app(self):
+    def reset_app(self, duration=None):
+        super().reset_app(duration)
         self.display_start_time = time.time()

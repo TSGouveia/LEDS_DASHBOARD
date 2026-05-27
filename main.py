@@ -16,7 +16,7 @@ PLAYLIST = [
     ("Relógio", 120),
     ("Clima", 30),
     ("Metros", 30),
-    ("Futebol", 30),
+    #("Futebol", 30),
     ("Mercados", 30),
 ]
 

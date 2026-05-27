@@ -13,10 +13,10 @@ from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO DA PLAYLIST ---
 PLAYLIST = [
-    ("Relógio", 120),
+    ("Relógio", 30),
     ("Clima", 30),
     ("Metros", 30),
-    #("Futebol", 30),
+    ("Futebol", 30),
     ("Mercados", 30),
 ]
 
@@ -85,42 +85,48 @@ def main():
             next_app = available_apps[next_app_name]
 
             print(f"[MAIN] Exibindo {app_name} por {actual_duration}s")
-            start_time = time.time()
+            start_time = time.monotonic()
             fetch_started = False
             current_app.reset_app(duration=playlist_duration)
 
             frame_delay = 1.0 / 10
             
             while True:
-                frame_start_time = time.monotonic()
+                loop_start = time.monotonic()
+                elapsed = loop_start - start_time
                 
+                # Desenha e envia para o Renderer (agora em thread segura)
                 frame = current_app.draw()
                 renderer.display(frame)
                 
-                elapsed = time.time() - start_time
-
-                processing_time = time.monotonic() - frame_start_time
-                sleep_time = frame_delay - processing_time
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-
-                # Start background fetch for NEXT app 5s before switching
+                # Inicia fetch da PRÓXIMA app 5s antes de acabar o tempo
                 if elapsed >= (actual_duration - 5) and not fetch_started:
                     threading.Thread(target=fetch_data_async, args=(next_app,), daemon=True).start()
                     fetch_started = True
 
-                if time.time() - last_update_check > UPDATE_CHECK_INTERVAL:
+                # Verifica Git Update (Executa apenas uma vez por ciclo da app para não pesar)
+                if not fetch_started and (time.time() - last_update_check > UPDATE_CHECK_INTERVAL):
                     if update_from_git():
                         show_update_screen(renderer, fonts)
                         return
                     last_update_check = time.time()
 
+                # Controlo de Frame Rate
+                processing_time = time.monotonic() - loop_start
+                sleep_time = frame_delay - processing_time
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+                # SAÍDA DO LOOP: Baseada no tempo real decorrido
                 if elapsed >= actual_duration:
-                    if not next_app.is_updating:
-                        current_playlist_idx = next_playlist_idx
-                        break
-                    else:
-                        time.sleep(0.5)
+                    # Se a próxima app ainda estiver a atualizar, o sistema aguarda no máximo 2s
+                    # para não quebrar o ritmo da playlist
+                    wait_start = time.monotonic()
+                    while next_app.is_updating and (time.monotonic() - wait_start < 2.0):
+                        time.sleep(0.1)
+                    
+                    current_playlist_idx = next_playlist_idx
+                    break
 
     except KeyboardInterrupt:
         print("\nDesligando sistema...")

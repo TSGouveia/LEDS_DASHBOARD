@@ -117,8 +117,9 @@ class MarketApp(BaseApp):
         canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         elapsed = time.time() - self.display_start_time
         
-        # Alterna entre BTC e S&P a cada 20 segundos
-        show_label = "BTC" if elapsed < 20 else "S&P"
+        # Alterna entre os dois na metade do tempo total definido
+        half_time = self.duration / 2.0
+        show_label = "BTC" if elapsed < half_time else "S&P"
         
         if self.data[show_label]["has"]:
             self.draw_graph(canvas, show_label)

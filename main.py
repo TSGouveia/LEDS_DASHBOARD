@@ -13,7 +13,7 @@ from utils import find_serial_port, update_from_git
 
 # --- CONFIGURAÇÃO DA PLAYLIST ---
 PLAYLIST = [
-    ("Relógio", 120),
+    ("Relógio", 90),
     ("Clima", 30),
     ("Metros", 30),
     ("Futebol", 30),

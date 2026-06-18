@@ -188,6 +188,12 @@ class FootballApp(BaseApp):
         canvas[y+2, x] = color
         canvas[y+2, x+3] = color
 
+    def _is_color_bright(self, color):
+        # Calculate luminance
+        r, g, b = color
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+        return luminance > 200 # Threshold can be adjusted
+
     def draw(self):
         canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         if not self.games: return canvas
@@ -198,20 +204,40 @@ class FootballApp(BaseApp):
         game_idx = int(elapsed // per_game_time) % len(self.games)
         game = self.games[game_idx]
         
-        white, grey = (255, 255, 255), (60, 60, 60)
+        
+        white, black, grey = (255, 255, 255), (0, 0, 0), (60, 60, 60)
+        grey_separator = (100, 100, 100) # Define a grey for the separator
         c_home = self.get_team_color(game['home_id'])
         c_away = self.get_team_color(game['away_id'])
 
-        if game['status'] in ["LIVE", "IN_PLAY"]:
+        if game['status'] in ["LIVE", "IN_PLAY", "PAUSED"]:
             # LIVE UI: Colored backgrounds
             canvas[:, 0:16] = c_home
             canvas[:, 16:32] = c_away
-            # White text on colors
-            self.font_loader.draw_text(canvas, game['home'], 2, 1, "3x5", white)
-            self.font_loader.draw_text(canvas, game['away'], 19, 1, "3x5", white)
-            canvas[0:18, 15:17] = white
-            self.font_loader.draw_text(canvas, game['score_h'], 5, 8, "5x9", white)
-            self.font_loader.draw_text(canvas, game['score_a'], 22, 8, "5x9", white)
+
+            # Determine text color based on background brightness
+            text_color_home = black if self._is_color_bright(c_home) else white
+            text_color_away = black if self._is_color_bright(c_away) else white
+
+            # Determine separator color
+            is_home_bright = self._is_color_bright(c_home)
+            is_away_bright = self._is_color_bright(c_away)
+
+            if is_home_bright and is_away_bright:
+                separator_color = black
+            elif not is_home_bright and not is_away_bright:
+                separator_color = white
+            else: # One bright, one dark
+                separator_color = grey_separator
+
+            # Draw separator
+            canvas[0:18, 15:17] = separator_color
+
+            # Use determined text color
+            self.font_loader.draw_text(canvas, game['home'], 2, 1, "3x5", text_color_home)
+            self.font_loader.draw_text(canvas, game['away'], 19, 1, "3x5", text_color_away)
+            self.font_loader.draw_text(canvas, game['score_h'], 5, 8, "5x9", text_color_home)
+            self.font_loader.draw_text(canvas, game['score_a'], 22, 8, "5x9", text_color_away)
         else:
             # SCHEDULED UI: Black background, Team colors as text
             self.font_loader.draw_text(canvas, game['home'], 1, 1, "3x5", c_home)
